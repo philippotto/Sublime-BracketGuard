@@ -26,7 +26,7 @@ class TestBracketGuard(TestCase):
 		self.assertEqual(len(openerRegions), 0)
 
 
-	def testinvalidBrackets(self):
+	def testInvalidBrackets(self):
 
 		testString = "({}])"
 		self.view.run_command("insert", {"characters": testString})

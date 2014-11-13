@@ -24,10 +24,9 @@ class SelectionListener(sublime_plugin.EventListener):
     if bracketResult.success:
       view.erase_regions("BracketGuardRegions")
     else:
-      flags = 0
       openerRegion = sublime.Region(bracketResult.start, bracketResult.start + 1)
       closerRegion = sublime.Region(bracketResult.end, bracketResult.end + 1)
-      view.add_regions("BracketGuardRegions", [openerRegion, closerRegion], "invalid", flags=flags)
+      view.add_regions("BracketGuardRegions", [openerRegion, closerRegion], "invalid")
 
 
 def getFirstBracketError(codeStr, view):
