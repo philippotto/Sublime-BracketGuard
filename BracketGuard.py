@@ -10,6 +10,11 @@ BracketResult = namedtuple("BracketResult", "success start end")
 activeChecks = 0
 dismissedChecks = 0
 
+# scopeNames is used to avoid a weird memory leak with Sublime Text which occurs
+# when calling view.scope_name within an async routine
+scopeNames = []
+
+
 class SelectionListener(sublime_plugin.EventListener):
 
   def on_modified(self, view):
@@ -17,9 +22,11 @@ class SelectionListener(sublime_plugin.EventListener):
     if view.settings().get("is_test", False):
       self.on_modified_async(view)
 
+    global scopeNames
+    scopeNames = [view.scope_name(i) for i in range(len(self.getBufferContent(view)))]
+
 
   def on_modified_async(self, view):
-
     global activeChecks, dismissedChecks
 
     if activeChecks > 0:
@@ -27,13 +34,15 @@ class SelectionListener(sublime_plugin.EventListener):
       return
 
     contentRegion = sublime.Region(0, view.size())
-    bufferContent = view.substr(contentRegion)
+    bufferContent = self.getBufferContent(view)
 
     activeChecks += 1
     bracketResult = getFirstBracketError(bufferContent, view)
+
     if dismissedChecks > 0:
       dismissedChecks = 0
       bracketResult = getFirstBracketError(bufferContent, view)
+
     activeChecks -= 1
 
     if bracketResult.success:
@@ -44,8 +53,15 @@ class SelectionListener(sublime_plugin.EventListener):
       view.add_regions("BracketGuardRegions", [openerRegion, closerRegion], "invalid")
 
 
+  def getBufferContent(self, view):
+
+    contentRegion = sublime.Region(0, view.size())
+    return view.substr(contentRegion)
+
+
 
 def getFirstBracketError(codeStr, view):
+  global scopeNames
 
   opener = list("({[")
   closer = list(")}]")
@@ -56,9 +72,10 @@ def getFirstBracketError(codeStr, view):
 
     if dismissedChecks > 0:
       # we will have to start over
-      return
+      return BracketResult(True, -1, -1)
 
-    scopeName = view.scope_name(index)
+    scopeName = scopeNames[index]
+
     if "string" in scopeName or "comment" in scopeName:
       # ignore unmatched brackets in strings and comments
       continue
