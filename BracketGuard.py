@@ -2,24 +2,39 @@ import sublime, sublime_plugin
 import re
 
 from collections import namedtuple
-from timeit import default_timer as timer
-
 
 BracketPosition = namedtuple("BracketPosition", "position opener")
 BracketResult = namedtuple("BracketResult", "success start end")
+
+# House keeping for the async beast
+activeChecks = 0
+dismissedChecks = 0
 
 class SelectionListener(sublime_plugin.EventListener):
 
   def on_modified(self, view):
 
+    if view.settings().get("is_test", False):
+      self.on_modified_async(view)
+
+
+  def on_modified_async(self, view):
+
+    global activeChecks, dismissedChecks
+
+    if activeChecks > 0:
+      dismissedChecks += 1
+      return
+
     contentRegion = sublime.Region(0, view.size())
     bufferContent = view.substr(contentRegion)
 
-    # start = timer()
+    activeChecks += 1
     bracketResult = getFirstBracketError(bufferContent, view)
-    # end = timer()
-    # TODO: check large files only when the user requests it explicitly
-
+    if dismissedChecks > 0:
+      dismissedChecks = 0
+      bracketResult = getFirstBracketError(bufferContent, view)
+    activeChecks -= 1
 
     if bracketResult.success:
       view.erase_regions("BracketGuardRegions")
@@ -27,6 +42,7 @@ class SelectionListener(sublime_plugin.EventListener):
       openerRegion = sublime.Region(bracketResult.start, bracketResult.start + 1)
       closerRegion = sublime.Region(bracketResult.end, bracketResult.end + 1)
       view.add_regions("BracketGuardRegions", [openerRegion, closerRegion], "invalid")
+
 
 
 def getFirstBracketError(codeStr, view):
@@ -37,6 +53,10 @@ def getFirstBracketError(codeStr, view):
   matchingStack = []
 
   for index, char in enumerate(codeStr):
+
+    if dismissedChecks > 0:
+      # we will have to start over
+      return
 
     scopeName = view.scope_name(index)
     if "string" in scopeName or "comment" in scopeName:

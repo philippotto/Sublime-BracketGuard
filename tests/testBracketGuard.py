@@ -8,7 +8,7 @@ class TestBracketGuard(TestCase):
 	def setUp(self):
 
 		self.view = sublime.active_window().new_file()
-
+		self.view.settings().set("is_test", True)
 
 	def tearDown(self):
 
