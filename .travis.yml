@@ -23,6 +23,3 @@ before_script:
 
 script:
     - sh travis.sh run_tests
-
-notifications:
-    email: false
