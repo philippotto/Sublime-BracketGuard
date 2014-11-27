@@ -19,11 +19,11 @@ class SelectionListener(sublime_plugin.EventListener):
 
   def on_modified(self, view):
 
-    if view.settings().get("is_test", False):
-      self.on_modified_async(view)
-
     global scopeNames
     scopeNames = [view.scope_name(i) for i in range(len(self.getBufferContent(view)))]
+
+    if view.settings().get("is_test", False):
+      self.on_modified_async(view)
 
 
   def on_modified_async(self, view):
