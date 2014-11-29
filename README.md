@@ -26,3 +26,7 @@ After finding the first bracket error, BracketGuard will stop to check the rest 
 ## Installation
 
 Either use [Package Control](https://sublime.wbond.net/installation) and search for `BracketGuard` or clone this repository into the Sublime Text "Packages" directory.
+
+## License
+
+MIT © Philipp Otto
