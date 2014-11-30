@@ -96,4 +96,4 @@ def getFirstBracketError(codeStr, view):
     return BracketResult(True, -1, -1)
   else:
     poppedOpener = matchingStack.pop()
-    return BracketResult(False, poppedOpener.position, len(codeStr) - 1)
+    return BracketResult(False, poppedOpener.position, -1)

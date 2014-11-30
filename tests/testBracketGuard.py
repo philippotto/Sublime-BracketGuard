@@ -18,21 +18,46 @@ class TestBracketGuard(TestCase):
 			self.view.window().run_command("close_file")
 
 
-	def testValidBrackets(self):
+	def insertCodeAndGetRegions(self, code):
 
-		testString = "([{}])"
-		self.view.run_command("insert", {"characters": testString})
-		openerRegions = self.view.get_regions("BracketGuardOpenerRegion")
+		self.view.run_command("insert", {"characters": code})
+		return self.view.get_regions("BracketGuardRegions")
 
+
+	def testPureValidBrackets(self):
+
+		openerRegions = self.insertCodeAndGetRegions("([{}])")
 		self.assertEqual(len(openerRegions), 0)
 
 
-	def testInvalidBrackets(self):
+	def testValidBracketsInCode(self):
 
-		testString = "({}])"
-		self.view.run_command("insert", {"characters": testString})
-		bracketGuardRegions = self.view.get_regions("BracketGuardRegions")
+		openerRegions = self.insertCodeAndGetRegions("a(bc[defg{hijkl}mn])o")
+		self.assertEqual(len(openerRegions), 0)
+
+
+	def testInvalidBracketsWrongCloser(self):
+
+		bracketGuardRegions = self.insertCodeAndGetRegions("({}])")
 
 		self.assertEqual(len(bracketGuardRegions), 2)
 		self.assertEqual(bracketGuardRegions[0].a, 0)
 		self.assertEqual(bracketGuardRegions[1].a, 3)
+
+
+	def testInvalidBracketsNoCloser(self):
+
+		bracketGuardRegions = self.insertCodeAndGetRegions("({}")
+
+		self.assertEqual(len(bracketGuardRegions), 2)
+		self.assertEqual(bracketGuardRegions[0].a, -1)
+		self.assertEqual(bracketGuardRegions[1].a, 0)
+
+
+	def testInvalidBracketsNoOpener(self):
+
+		bracketGuardRegions = self.insertCodeAndGetRegions("){}")
+
+		self.assertEqual(len(bracketGuardRegions), 2)
+		self.assertEqual(bracketGuardRegions[0].a, -1)
+		self.assertEqual(bracketGuardRegions[1].a, 0)
