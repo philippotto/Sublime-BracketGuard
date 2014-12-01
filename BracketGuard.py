@@ -15,25 +15,74 @@ dismissedChecks = 0
 scopeNames = []
 
 
-class SelectionListener(sublime_plugin.EventListener):
+class EventListener(sublime_plugin.EventListener):
 
   def on_modified(self, view):
+
+    if not self.doAutoCheck(view):
+      print("on_modified")
+      self.clearRegions(view)
+      return
+
+    self.collectScopeNames(view)
+
+    if view.settings().get("is_test", False):
+      self.highlightBracketError(view)
+
+
+  def clearRegions(self, view):
+
+    view.erase_regions("BracketGuardRegions")
+
+
+  def collectScopeNames(self, view):
 
     global scopeNames
     scopeNames = [view.scope_name(i) for i in range(len(self.getBufferContent(view)))]
 
-    if view.settings().get("is_test", False):
-      self.on_modified_async(view)
+
+  def on_post_save(self, view):
+
+    if self.checkOnSave() and not self.doAutoCheck(view):
+      self.collectScopeNames(view)
+
+
+  def on_post_save_async(self, view):
+
+    if self.checkOnSave() and not self.doAutoCheck(view):
+      self.highlightBracketError(view)
+
+
+  def checkOnSave(self):
+
+    settings = sublime.load_settings("BracketGuard.sublime-settings")
+    return settings.get("check_on_save")
+
+
+  def doAutoCheck(self, view):
+
+    settings = sublime.load_settings("BracketGuard.sublime-settings")
+    threshold = settings.get("file_length_threshold")
+    bufferContent = self.getBufferContent(view)
+    return threshold >= len(bufferContent)
 
 
   def on_modified_async(self, view):
+
+    if not self.doAutoCheck(view):
+      return
+
+    self.highlightBracketError(view)
+
+
+  def highlightBracketError(self, view):
+
     global activeChecks, dismissedChecks
 
     if activeChecks > 0:
       dismissedChecks += 1
       return
 
-    contentRegion = sublime.Region(0, view.size())
     bufferContent = self.getBufferContent(view)
 
     activeChecks += 1
@@ -61,18 +110,23 @@ class SelectionListener(sublime_plugin.EventListener):
 
 
 def getFirstBracketError(codeStr, view):
-  global scopeNames
+  global scopeNames, dismissedChecks
 
   opener = list("({[")
   closer = list(")}]")
 
   matchingStack = []
+  successResult = BracketResult(True, -1, -1)
 
   for index, char in enumerate(codeStr):
 
     if dismissedChecks > 0:
       # we will have to start over
-      return BracketResult(True, -1, -1)
+      return successResult
+
+    if len(scopeNames) <= index:
+      dismissedChecks += 1
+      return successResult
 
     scopeName = scopeNames[index]
 
@@ -93,7 +147,7 @@ def getFirstBracketError(codeStr, view):
         return BracketResult(False, poppedOpener.position, index)
 
   if len(matchingStack) == 0:
-    return BracketResult(True, -1, -1)
+    return successResult
   else:
     poppedOpener = matchingStack.pop()
     return BracketResult(False, poppedOpener.position, -1)

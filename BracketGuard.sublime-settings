@@ -1,0 +1,6 @@
+{
+	// If the current document has more characters automatic checking of brackets
+	// is disabled.
+	"file_length_threshold" : 20000,
+	"check_on_save" : true
+}
