@@ -6,51 +6,32 @@ from collections import namedtuple
 BracketPosition = namedtuple("BracketPosition", "position opener")
 BracketResult = namedtuple("BracketResult", "success start end")
 
-# House keeping for the async beast
-activeChecks = 0
-dismissedChecks = 0
-
-# scopeNames is used to avoid a weird memory leak with Sublime Text which occurs
-# when calling view.scope_name within an async routine
-scopeNames = []
-
+bracketGuardRegions = "BracketGuardRegions"
 
 class EventListener(sublime_plugin.EventListener):
 
   def on_modified(self, view):
 
-    if not self.doAutoCheck(view):
-      print("on_modified")
-      self.clearRegions(view)
-      return
-
-    self.collectScopeNames(view)
-
     if view.settings().get("is_test", False):
       self.highlightBracketError(view)
 
 
-  def clearRegions(self, view):
+  def on_modified_async(self, view):
 
-    view.erase_regions("BracketGuardRegions")
-
-
-  def collectScopeNames(self, view):
-
-    global scopeNames
-    scopeNames = [view.scope_name(i) for i in range(len(self.getBufferContent(view)))]
-
-
-  def on_post_save(self, view):
-
-    if self.checkOnSave() and not self.doAutoCheck(view):
-      self.collectScopeNames(view)
+    self.clearRegions(view)
+    if self.doAutoCheck(view):
+       self.highlightBracketError(view)
 
 
   def on_post_save_async(self, view):
 
     if self.checkOnSave() and not self.doAutoCheck(view):
       self.highlightBracketError(view)
+
+
+  def clearRegions(self, view):
+
+    view.erase_regions(bracketGuardRegions)
 
 
   def checkOnSave(self):
@@ -63,73 +44,38 @@ class EventListener(sublime_plugin.EventListener):
 
     settings = sublime.load_settings("BracketGuard.sublime-settings")
     threshold = settings.get("file_length_threshold")
-    bufferContent = self.getBufferContent(view)
-    return threshold >= len(bufferContent)
-
-
-  def on_modified_async(self, view):
-
-    if not self.doAutoCheck(view):
-      return
-
-    self.highlightBracketError(view)
+    return threshold == -1 or threshold >= view.size()
 
 
   def highlightBracketError(self, view):
 
-    global activeChecks, dismissedChecks
+    bracketResult = getFirstBracketError(view)
 
-    if activeChecks > 0:
-      dismissedChecks += 1
-      return
-
-    bufferContent = self.getBufferContent(view)
-
-    activeChecks += 1
-    bracketResult = getFirstBracketError(bufferContent, view)
-
-    if dismissedChecks > 0:
-      dismissedChecks = 0
-      bracketResult = getFirstBracketError(bufferContent, view)
-
-    activeChecks -= 1
-
-    if bracketResult.success:
-      view.erase_regions("BracketGuardRegions")
-    else:
+    if not bracketResult.success:
       openerRegion = sublime.Region(bracketResult.start, bracketResult.start + 1)
       closerRegion = sublime.Region(bracketResult.end, bracketResult.end + 1)
-      view.add_regions("BracketGuardRegions", [openerRegion, closerRegion], "invalid")
-
-
-  def getBufferContent(self, view):
-
-    contentRegion = sublime.Region(0, view.size())
-    return view.substr(contentRegion)
+      view.add_regions(bracketGuardRegions, [openerRegion, closerRegion], "invalid")
 
 
 
-def getFirstBracketError(codeStr, view):
-  global scopeNames, dismissedChecks
+def getFirstBracketError(view):
 
   opener = list("({[")
   closer = list(")}]")
 
   matchingStack = []
   successResult = BracketResult(True, -1, -1)
+  codeStr = view.substr(sublime.Region(0, view.size()))
 
   for index, char in enumerate(codeStr):
 
-    if dismissedChecks > 0:
-      # we will have to start over
+    if len(codeStr ) != view.size():
       return successResult
 
-    if len(scopeNames) <= index:
-      dismissedChecks += 1
-      return successResult
+    if char not in opener and not char in closer:
+      continue
 
-    scopeName = scopeNames[index]
-
+    scopeName = view.scope_name(index)
     if "string" in scopeName or "comment" in scopeName:
       # ignore unmatched brackets in strings and comments
       continue
@@ -145,6 +91,7 @@ def getFirstBracketError(codeStr, view):
       poppedOpener = matchingStack.pop()
       if matchingOpener != poppedOpener.opener:
         return BracketResult(False, poppedOpener.position, index)
+
 
   if len(matchingStack) == 0:
     return successResult
