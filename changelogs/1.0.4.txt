@@ -1,0 +1,4 @@
+BracketGuard Changelog
+
+- added file_length_threshold option to settings
+- added check_on_save option to settings
