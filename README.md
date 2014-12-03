@@ -23,6 +23,14 @@ Here is an example of how mistakes will be highlighted:
 BracketGuard will highlight the first unexpected closing bracket and the corresponding opening bracket to which its counterpart is expected.
 After finding the first bracket error, BracketGuard will stop to check the rest of your code, because following mistakes cannot be determined due to the corrupt balancing.
 
+## Settings
+
+The settings file includes two options:
+
+- `file_length_threshold`: Every file which has more characters than this threshold won't be checked automatically.
+- `check_on_save`: When set to true, the file will be (additionally) checked when saving the file.
+
+
 ## Installation
 
 Either use [Package Control](https://sublime.wbond.net/installation) and search for `BracketGuard` or clone this repository into the Sublime Text "Packages" directory.
