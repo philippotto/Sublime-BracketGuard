@@ -1,3 +1,12 @@
 [
-  { "command": "jump_to_last_region", "caption" : "BracketGuard: ..." }
+  {
+    "caption": "Preferences: BracketGuard Settings - Default",
+    "command": "open_file",
+    "args": {"file": "${packages}/BracketGuard/BracketGuard.sublime-settings"}
+  },
+  {
+    "caption": "Preferences: BracketGuard Settings - User",
+    "command": "open_file",
+    "args": {"file": "${packages}/User/BracketGuard.sublime-settings", "contents": "{\n\t$0\n}"}
+  }
 ]
