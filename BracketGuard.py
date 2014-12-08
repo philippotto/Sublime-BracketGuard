@@ -49,7 +49,7 @@ class EventListener(sublime_plugin.EventListener):
 
   def highlightBracketError(self, view):
 
-    bracketResult = getFirstBracketError(view)
+    bracketResult = self.getFirstBracketError(view)
 
     if not bracketResult.success:
       openerRegion = sublime.Region(bracketResult.start, bracketResult.start + 1)
@@ -57,44 +57,43 @@ class EventListener(sublime_plugin.EventListener):
       view.add_regions(bracketGuardRegions, [openerRegion, closerRegion], "invalid")
 
 
+  def getFirstBracketError(view):
 
-def getFirstBracketError(view):
+    opener = list("({[")
+    closer = list(")}]")
 
-  opener = list("({[")
-  closer = list(")}]")
+    matchingStack = []
+    successResult = BracketResult(True, -1, -1)
+    codeStr = view.substr(sublime.Region(0, view.size()))
 
-  matchingStack = []
-  successResult = BracketResult(True, -1, -1)
-  codeStr = view.substr(sublime.Region(0, view.size()))
+    for index, char in enumerate(codeStr):
 
-  for index, char in enumerate(codeStr):
+      if len(codeStr ) != view.size():
+        return successResult
 
-    if len(codeStr ) != view.size():
+      if char not in opener and not char in closer:
+        continue
+
+      scopeName = view.scope_name(index)
+      if "string" in scopeName or "comment" in scopeName:
+        # ignore unmatched brackets in strings and comments
+        continue
+
+      if char in opener:
+        matchingStack.append(BracketPosition(index, char))
+      elif char in closer:
+        matchingOpener = opener[closer.index(char)]
+
+        if len(matchingStack) == 0:
+          return BracketResult(False, -1, index)
+
+        poppedOpener = matchingStack.pop()
+        if matchingOpener != poppedOpener.opener:
+          return BracketResult(False, poppedOpener.position, index)
+
+
+    if len(matchingStack) == 0:
       return successResult
-
-    if char not in opener and not char in closer:
-      continue
-
-    scopeName = view.scope_name(index)
-    if "string" in scopeName or "comment" in scopeName:
-      # ignore unmatched brackets in strings and comments
-      continue
-
-    if char in opener:
-      matchingStack.append(BracketPosition(index, char))
-    elif char in closer:
-      matchingOpener = opener[closer.index(char)]
-
-      if len(matchingStack) == 0:
-        return BracketResult(False, -1, index)
-
+    else:
       poppedOpener = matchingStack.pop()
-      if matchingOpener != poppedOpener.opener:
-        return BracketResult(False, poppedOpener.position, index)
-
-
-  if len(matchingStack) == 0:
-    return successResult
-  else:
-    poppedOpener = matchingStack.pop()
-    return BracketResult(False, poppedOpener.position, -1)
+      return BracketResult(False, poppedOpener.position, -1)
