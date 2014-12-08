@@ -1,5 +1,5 @@
 import sublime, sublime_plugin
-import re
+import re, time
 
 from collections import namedtuple
 
@@ -9,6 +9,11 @@ BracketResult = namedtuple("BracketResult", "success start end")
 bracketGuardRegions = "BracketGuardRegions"
 
 class EventListener(sublime_plugin.EventListener):
+
+  def __init__(self):
+
+    self.latest_keypresses = {}
+
 
   def on_modified(self, view):
 
@@ -20,8 +25,7 @@ class EventListener(sublime_plugin.EventListener):
 
     self.clearRegions(view)
     if self.doAutoCheck(view):
-       self.highlightBracketError(view)
-
+       self.debounce(view, "modified", self.highlightBracketError)
 
   def on_post_save_async(self, view):
 
@@ -34,16 +38,19 @@ class EventListener(sublime_plugin.EventListener):
     view.erase_regions(bracketGuardRegions)
 
 
+  def settings(self):
+
+    return sublime.load_settings("BracketGuard.sublime-settings")
+
+
   def checkOnSave(self):
 
-    settings = sublime.load_settings("BracketGuard.sublime-settings")
-    return settings.get("check_on_save")
+    return self.settings().get("check_on_save")
 
 
   def doAutoCheck(self, view):
 
-    settings = sublime.load_settings("BracketGuard.sublime-settings")
-    threshold = settings.get("file_length_threshold")
+    threshold = self.settings().get("file_length_threshold")
     return threshold == -1 or threshold >= view.size()
 
 
@@ -57,6 +64,21 @@ class EventListener(sublime_plugin.EventListener):
       view.add_regions(bracketGuardRegions, [openerRegion, closerRegion], "invalid")
 
 
+  def debounce(self, view, event_type, func):
+
+    key = (event_type, view.file_name())
+    this_keypress = time.time()
+    self.latest_keypresses[key] = this_keypress
+    debounceTime = self.settings().get("debounce_time", 500)
+
+    def callback():
+        latest_keypress = self.latest_keypresses.get(key, None)
+        if this_keypress == latest_keypress:
+            func(view)
+
+    sublime.set_timeout_async(callback, debounceTime)
+
+
   def getFirstBracketError(self, view):
 
     opener = list("({[")
@@ -68,8 +90,9 @@ class EventListener(sublime_plugin.EventListener):
 
     for index, char in enumerate(codeStr):
 
-      if len(codeStr ) != view.size():
-        return successResult
+      # this leaks memory ?
+      # if len(codeStr) != view.size():
+      #   return successResult
 
       if char not in opener and not char in closer:
         continue
