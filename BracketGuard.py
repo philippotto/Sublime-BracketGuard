@@ -98,7 +98,12 @@ class EventListener(sublime_plugin.EventListener):
         continue
 
       scopeName = view.scope_name(index)
-      if "string" in scopeName or "comment" in scopeName:
+      hasScope = lambda s: s in scopeName
+
+      # workaround for the following code in markdown: ![example](img/example.png)
+      markdownBracketScope = "punctuation.definition.string.begin.markdown"
+
+      if hasScope("string") and not hasScope(markdownBracketScope) or hasScope("comment"):
         # ignore unmatched brackets in strings and comments
         continue
 
