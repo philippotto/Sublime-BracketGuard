@@ -103,7 +103,7 @@ class EventListener(sublime_plugin.EventListener):
       # workaround for the following code in markdown: ![example](img/example.png)
       markdownBracketScope = "punctuation.definition.string.begin.markdown"
 
-      if hasScope("string") and not hasScope(markdownBracketScope) or hasScope("comment"):
+      if hasScope("string") and not hasScope("unquoted") and not hasScope(markdownBracketScope) or hasScope("comment"):
         # ignore unmatched brackets in strings and comments
         continue
 
