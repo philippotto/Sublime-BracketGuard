@@ -35,6 +35,9 @@ class TestBracketGuard(TestCase):
 		openerRegions = self.insertCodeAndGetRegions("a(bc[defg{hijkl}mn])o")
 		self.assertEqual(len(openerRegions), 0)
 
+		openerRegions = self.insertCodeAndGetRegions("<a href={ url }>")
+		self.assertEqual(len(openerRegions), 0)
+
 
 	def testInvalidBracketsWrongCloser(self):
 
