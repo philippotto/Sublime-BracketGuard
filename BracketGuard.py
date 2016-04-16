@@ -105,7 +105,7 @@ class EventListener(sublime_plugin.EventListener):
       markdownBracketScopeEnd = "punctuation.definition.string.end.markdown"
       isMarkdownStringBeginOrEnd = lambda s: hasScope(markdownBracketScopeBegin) or hasScope(markdownBracketScopeEnd)
 
-      if hasScope("string") and not isMarkdownStringBeginOrEnd(markdownBracketScopeBegin) or hasScope("comment"):
+      if hasScope("string") and not hasScope("unquoted") and not isMarkdownStringBeginOrEnd(markdownBracketScopeBegin) or hasScope("comment"):
         # ignore unmatched brackets in strings and comments
         continue
 
